@@ -111,7 +111,7 @@ class Performance {
 
   @Before
   def init(): Unit = {
-    session.run("MATCH (n:_meta_panda_bench) DETACH DELETE n")
+//    session.run("MATCH (n:_meta_panda_bench) DETACH DELETE n")
     sampleNodes = sampling(sampleSize)
   }
 
@@ -185,6 +185,55 @@ class Performance {
     threadPool.awaitTermination(Long.MaxValue, SECONDS)
     val duration = System.currentTimeMillis() - t0
     println(s"tripleFilterBench: elapsed time ${duration} ms")
+  }
+
+  @Test
+  def writeHeavyBench(): Unit = {
+    val ran = new Random()
+    val t0 = System.currentTimeMillis()
+    var i = 0
+    sampleNodes.foreach(s => {
+      i += 1
+      Thread.sleep(ran.nextInt(200))
+      threadPool.submit(new NodeModify(s, session))
+      if (i % 5 == 0) threadPool.submit(new NodeDoubleFilter(s, session))
+    })
+    threadPool.shutdown()
+    threadPool.awaitTermination(Long.MaxValue, SECONDS)
+    val duration = System.currentTimeMillis() - t0
+    println(s"writeHeavyBench: elapsed time ${duration} ms")
+  }
+
+  @Test
+  def readHeavyBench(): Unit = {
+    val ran = new Random()
+    val t0 = System.currentTimeMillis()
+    var i = 0
+    sampleNodes.foreach(s => {
+      i += 1
+      Thread.sleep(ran.nextInt(200))
+      threadPool.submit(new NodeDoubleFilter(s, session))
+      if (i % 5 == 0) threadPool.submit(new NodeModify(s, session))
+    })
+    threadPool.shutdown()
+    threadPool.awaitTermination(Long.MaxValue, SECONDS)
+    val duration = System.currentTimeMillis() - t0
+    println(s"readHeavyBench: elapsed time ${duration} ms")
+  }
+
+  @Test
+  def readWriteBench(): Unit = {
+    val ran = new Random()
+    val t0 = System.currentTimeMillis()
+    sampleNodes.foreach(s => {
+      Thread.sleep(ran.nextInt(200))
+      threadPool.submit(new NodeDoubleFilter(s, session))
+      threadPool.submit(new NodeModify(s, session))
+    })
+    threadPool.shutdown()
+    threadPool.awaitTermination(Long.MaxValue, SECONDS)
+    val duration = System.currentTimeMillis() - t0
+    println(s"readWriteBench: elapsed time ${duration} ms")
   }
 
   @After
