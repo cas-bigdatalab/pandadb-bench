@@ -126,7 +126,7 @@ class Performance {
     threadPool.shutdown()
     threadPool.awaitTermination(Long.MaxValue, SECONDS)
     val duration = System.currentTimeMillis() - t0
-    assert(session.run("match (n:_meta_panda_bench) return COUNT(n)").next().get(0).asInt() == sampleSize)
+//    assert(session.run("match (n:_meta_panda_bench) return COUNT(n)").next().get(0).asInt() == sampleSize)
     println(s"creationBench: elapsed time ${duration} ms")
   }
 
@@ -141,7 +141,7 @@ class Performance {
     threadPool.shutdown()
     threadPool.awaitTermination(Long.MaxValue, SECONDS)
     val duration = System.currentTimeMillis() - t0
-    assert(session.run("match (n:_meta_panda_bench) return COUNT(n)").next().get(0).asInt() == sampleSize)
+//    assert(session.run("match (n:_meta_panda_bench) return COUNT(n)").next().get(0).asInt() == sampleSize)
     println(s"modifyBench: elapsed time ${duration} ms")
   }
 
@@ -238,7 +238,7 @@ class Performance {
 
   @After
   def close: Unit = {
-    session.run("MATCH (n:_meta_panda_bench) DETACH DELETE n")
+//    session.run("MATCH (n:_meta_panda_bench) DETACH DELETE n")
     session.close()
     driver.close()
   }
