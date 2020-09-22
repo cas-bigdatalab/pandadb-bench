@@ -24,6 +24,7 @@ class Performance {
   val sampleSize = 100
   val threadPool: ExecutorService = Executors.newFixedThreadPool(8)
   val session = driver.session()
+  val intervalSub = true
 
 
   def sampling(sampleSize: Int): Iterable[Node] = {
@@ -92,7 +93,7 @@ class Performance {
     }
   }
 
-  class NodeRegexpFilter(n: Node, session: Session) extends Runnable {
+  class NodeRegexpStartWithFilter(n: Node, session: Session) extends Runnable {
     override def run() {
       var labelPart = new StringBuilder("")
       n.labels().take(1).foreach(l => labelPart ++= s":${l}")
@@ -103,6 +104,23 @@ class Performance {
       val regexp = attrPartRetain._2.asInstanceOf[String].split(' ').head
       if (regexp.length <3) return
       val wherePart = s"${attrPartRetain._1} STARTS WITH '${regexp}'"
+      val q = s"Match (n${labelPart}) where ${wherePart} return count(n)"
+      println(q)
+      session.run(q)
+    }
+  }
+
+  class NodeRegexpEndWithFilter(n: Node, session: Session) extends Runnable {
+    override def run() {
+      var labelPart = new StringBuilder("")
+      n.labels().take(1).foreach(l => labelPart ++= s":${l}")
+      val attrPartRetain = n.asMap().toMap.filter(a => {
+        ! a._1.toLowerCase.contains("id") && a._2.isInstanceOf[String] && a._2.asInstanceOf[String].length>5
+      }).take(1).map(kv => ("n."+kv._1,kv._2)).head
+      if (attrPartRetain == null) return
+      val regexp = attrPartRetain._2.asInstanceOf[String].split(' ').last
+      if (regexp.length <3) return
+      val wherePart = s"${attrPartRetain._1} ENDS WITH '${regexp}'"
       val q = s"Match (n${labelPart}) where ${wherePart} return count(n)"
       println(q)
       session.run(q)
@@ -120,7 +138,7 @@ class Performance {
     val ran = new Random()
     val t0 = System.currentTimeMillis()
     sampleNodes.foreach(s => {
-      Thread.sleep(ran.nextInt(200))
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
       threadPool.submit(new NodeClone(s, session))
     })
     threadPool.shutdown()
@@ -135,7 +153,7 @@ class Performance {
     val ran = new Random()
     val t0 = System.currentTimeMillis()
     sampleNodes.foreach(s => {
-      Thread.sleep(ran.nextInt(200))
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
       threadPool.submit(new NodeModify(s, session))
     })
     threadPool.shutdown()
@@ -150,7 +168,7 @@ class Performance {
     val ran = new Random()
     val t0 = System.currentTimeMillis()
     sampleNodes.foreach(s => {
-      Thread.sleep(ran.nextInt(200))
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
       threadPool.submit(new NodeDoubleFilter(s, session))
     })
     threadPool.shutdown()
@@ -164,7 +182,7 @@ class Performance {
     val ran = new Random()
     val t0 = System.currentTimeMillis()
     sampleNodes.foreach(s => {
-      Thread.sleep(ran.nextInt(200))
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
       threadPool.submit(new NodeTrippleFilter(s, session))
     })
     threadPool.shutdown()
@@ -174,12 +192,26 @@ class Performance {
   }
 
   @Test
-  def regexpFilterBench(): Unit = {
+  def regexpStartWithFilterBench(): Unit = {
     val ran = new Random()
     val t0 = System.currentTimeMillis()
     sampleNodes.foreach(s => {
-      Thread.sleep(ran.nextInt(200))
-      threadPool.submit(new NodeRegexpFilter(s, session))
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
+      threadPool.submit(new NodeRegexpStartWithFilter(s, session))
+    })
+    threadPool.shutdown()
+    threadPool.awaitTermination(Long.MaxValue, SECONDS)
+    val duration = System.currentTimeMillis() - t0
+    println(s"tripleFilterBench: elapsed time ${duration} ms")
+  }
+
+  @Test
+  def regexpEndWithFilterBench(): Unit = {
+    val ran = new Random()
+    val t0 = System.currentTimeMillis()
+    sampleNodes.foreach(s => {
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
+      threadPool.submit(new NodeRegexpEndWithFilter(s, session))
     })
     threadPool.shutdown()
     threadPool.awaitTermination(Long.MaxValue, SECONDS)
@@ -194,7 +226,7 @@ class Performance {
     var i = 0
     sampleNodes.foreach(s => {
       i += 1
-      Thread.sleep(ran.nextInt(200))
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
       threadPool.submit(new NodeModify(s, session))
       if (i % 5 == 0) threadPool.submit(new NodeDoubleFilter(s, session))
     })
@@ -211,7 +243,7 @@ class Performance {
     var i = 0
     sampleNodes.foreach(s => {
       i += 1
-      Thread.sleep(ran.nextInt(200))
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
       threadPool.submit(new NodeDoubleFilter(s, session))
       if (i % 5 == 0) threadPool.submit(new NodeModify(s, session))
     })
@@ -226,7 +258,7 @@ class Performance {
     val ran = new Random()
     val t0 = System.currentTimeMillis()
     sampleNodes.foreach(s => {
-      Thread.sleep(ran.nextInt(200))
+      if (intervalSub) Thread.sleep(ran.nextInt(200))
       threadPool.submit(new NodeDoubleFilter(s, session))
       threadPool.submit(new NodeModify(s, session))
     })
